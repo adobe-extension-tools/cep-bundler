@@ -2,7 +2,7 @@
   "name": "cep-bundler",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "lib/index.js",
   "dependencies": {
     "babelify": "^7.3.0",
     "brfs": "^1.4.3",
@@ -31,7 +31,7 @@
     "build": "tsc"
   },
   "bin": {
-    "cep-bundler": "./lib/index.js"
+    "cep-bundler": "./bin/index.js"
   },
   "author": "",
   "license": "ISC"
