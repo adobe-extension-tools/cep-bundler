@@ -1,7 +1,7 @@
 {
   "name": "cep-bundler",
-  "version": "1.0.0",
-  "description": "",
+  "version": "0.0.1",
+  "description": "Packager for CEP extensions with TypeScript and Browserify (or WebPack) + Live reloading & HMR",
   "main": "lib/index.js",
   "dependencies": {
     "babelify": "^7.3.0",
@@ -33,6 +33,6 @@
   "bin": {
     "cep-bundler": "./bin/index.js"
   },
-  "author": "",
-  "license": "ISC"
+  "author": "Koen Schmeets",
+  "license": "MIT"
 }
