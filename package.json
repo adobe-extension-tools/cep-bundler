@@ -19,7 +19,8 @@
     "rimraf": "^2.6.2",
     "sync-files": "^1.0.3",
     "watchify": "^3.9.0",
-    "webpack": "^3.9.1"
+    "webpack": "^3.9.1",
+    "webpack-dev-server": "^2.9.5"
   },
   "devDependencies": {
     "@types/node": "^8.0.32",
