@@ -1,6 +1,6 @@
 {
   "name": "cep-bundler",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Packager for CEP extensions with TypeScript and Browserify (or WebPack) + Live reloading & HMR",
   "main": "lib/index.js",
   "dependencies": {

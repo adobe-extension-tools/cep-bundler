@@ -32,6 +32,8 @@ async function build(opts) {
   createHtml(opts)
   createManifest(opts)
   createDebug(opts)
+  typescriptCompileJs(opts)
+  typescriptCompileJsx(opts)
   try {
     await copyAssets(opts)
     await copyPublic(opts)
@@ -39,8 +41,6 @@ async function build(opts) {
   } catch (err) {
     console.log('Error while copying', err)
   }
-  typescriptCompileJs(opts)
-  typescriptCompileJsx(opts)
   if (opts.bundler === 'browserify') {
     browserifyBundleJs(opts)
     browserifyBundleJsx(opts)
@@ -88,6 +88,9 @@ function clean(opts) {
   } catch (e) {}
   try {
     mkdirp(opts.paths.dest)
+  } catch (e) {}
+  try {
+    mkdirp(path.join(opts.paths.src, 'js', 'assets'))
   } catch (e) {}
 }
 
