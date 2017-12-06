@@ -279,6 +279,7 @@ function webpackWatchJsx(opts, cb = () => {}) {
 
 function browserifyBundleJs(opts, cb = () => {}) {
   console.log('-> browserifyBundleJs')
+  process.env.JSX_BUNDLE_PATH = path.join(opts.paths.dest, 'index.jsx')
   const entryFile = path.join(opts.paths.build, 'js', 'index.js')
   let transform = []
   if (opts.browserify && opts.browserify.js && opts.browserify.js.transform) {
@@ -286,8 +287,8 @@ function browserifyBundleJs(opts, cb = () => {}) {
   }
   transform = transform.concat([
     require('babelify'),
-    require('brfs'),
-    require('envify')
+    require('envify'),
+    require('brfs')
   ])
   const bundler = browserify({
     entries: [entryFile],
@@ -316,7 +317,8 @@ function browserifyBundleJsx(opts, cb = () => {}) {
       [require('prependify'), `var globalThis = this;`]
     ],
     transform: [
-      require('envify')
+      require('envify'),
+      require('brfs')
     ]
   })
   const bundleFile = path.join(opts.paths.dest, 'index.jsx')
@@ -380,8 +382,8 @@ function browserifyWatchJs(opts) {
   }
   transform = transform.concat([
     require('babelify'),
-    require('brfs'),
-    require('envify')
+    require('envify'),
+    require('brfs')
   ])
   budo(entryFile, {
     browserify: {
@@ -415,7 +417,8 @@ function browserifyWatchJsx(opts) {
       [require('prependify'), `var globalThis = this;`]
     ],
     transform: [
-      require('envify')
+      require('envify'),
+      require('brfs')
     ]
   })
   function updateJsx() {
