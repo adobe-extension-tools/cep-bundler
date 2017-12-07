@@ -6,10 +6,10 @@ pipeline:
       - npm run build
   npm:
     image: plugins/npm
-    secrets: [ npm_usernam, npm_password, npm_email ]
+    secrets: [ npm_username, npm_password, npm_email ]
   notify:
     image: plugins/slack
     channel: dev
-    secrets: [ webhook ]
+    secrets: [ slack_webhook ]
     when:
       status: [ success, failure ]
