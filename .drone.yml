@@ -2,15 +2,14 @@ pipeline:
   build:
     image: node:9.2.0-alpine
     commands:
+      - npm install
       - npm run build
-  deploy:
-    image: node:9.2.0-alpine
-    commands:
-      - npm publish
-    when:
-      event: deployment
+  npm:
+    image: plugins/npm
+    secrets: [ npm_usernam, npm_password, npm_email ]
   notify:
     image: plugins/slack
     channel: dev
+    secrets: [ webhook ]
     when:
       status: [ success, failure ]
