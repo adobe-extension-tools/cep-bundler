@@ -279,7 +279,6 @@ function webpackWatchJsx(opts, cb = () => {}) {
 
 function browserifyBundleJs(opts, cb = () => {}) {
   console.log('-> browserifyBundleJs')
-  process.env.JSX_BUNDLE_PATH = path.join(opts.paths.dest, 'index.jsx')
   const entryFile = path.join(opts.paths.build, 'js', 'index.js')
   let transform = []
   if (opts.browserify && opts.browserify.js && opts.browserify.js.transform) {

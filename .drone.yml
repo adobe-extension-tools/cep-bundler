@@ -1,0 +1,16 @@
+pipeline:
+  build:
+    image: node:9.2.0-alpine
+    commands:
+      - npm run build
+  deploy:
+    image: node:9.2.0-alpine
+    commands:
+      - npm publish
+    when:
+      event: deployment
+  notify:
+    image: plugins/slack
+    channel: dev
+    when:
+      status: [ success, failure ]
