@@ -1,6 +1,6 @@
 # cep-bundler
 
-![status badge](https://aedtci.mtmograph.com/api/badges/adobe-extension-tools/cep-bundler/status.svg)
+[![Build Status](https://aedtci.mtmograph.com/api/badges/adobe-extension-tools/cep-bundler/status.svg)](https://aedtci.mtmograph.com/adobe-extension-tools/cep-bundler)
 
 This bundler allows you to write modern TypeScript code and bundle it into a CEP extension.
 It uses LiveReactload to get near instant updates whenever you make changes to a file.
