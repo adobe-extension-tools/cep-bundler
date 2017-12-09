@@ -1,6 +1,6 @@
 {
   "name": "cep-bundler",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Packager for CEP extensions with TypeScript and Browserify (or WebPack) + Live reloading & HMR",
   "main": "lib/index.js",
   "dependencies": {
@@ -20,11 +20,11 @@
     "sync-files": "^1.0.3",
     "watchify": "^3.9.0",
     "webpack": "^3.9.1",
-    "webpack-dev-server": "^2.9.5"
+    "webpack-dev-server": "^2.9.5",
+    "typescript": "^2.6.2"
   },
   "devDependencies": {
-    "@types/node": "^8.0.32",
-    "typescript": "^2.6.2"
+    "@types/node": "^8.0.32"
   },
   "scripts": {
     "start": "tsc -w",
