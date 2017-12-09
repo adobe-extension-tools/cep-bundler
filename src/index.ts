@@ -3,7 +3,7 @@
 const projectDir = process.cwd()
 const config = require(`${projectDir}/cep-config`)
 
-import { writeFileSync, createWriteStream } from 'fs'
+import { writeFileSync, createWriteStream, existsSync } from 'fs'
 import * as path from 'path'
 import manifestTemplate from './templates/manifest'
 import htmlTemplate from './templates/html'
@@ -148,9 +148,13 @@ async function copyDeps(opts, pkg) {
 
 function typescriptCompileJs(opts) {
   console.log('-> typescriptCompileJs')
+  let tscPath = `${__dirname}/../../.bin/tsc`
+  if (!existsSync(tscPath)) {
+    tscPath = `${__dirname}/../node_modules/.bin/tsc`
+  }
   const tsConfigFile = path.join(opts.paths.src, 'js', 'tsconfig.json')
   try {
-    execSync(`${__dirname}/../../../node_modules/.bin/tsc --project ${tsConfigFile}`)
+    execSync(`${tscPath} --project ${tsConfigFile}`)
   } catch (err) {
     console.log(err.stdout.toString())
   }
@@ -158,9 +162,13 @@ function typescriptCompileJs(opts) {
 
 function typescriptCompileJsx(opts) {
   console.log('-> typescriptCompileJsx')
+  let tscPath = `${__dirname}/../../.bin/tsc`
+  if (!existsSync(tscPath)) {
+    tscPath = `${__dirname}/../node_modules/.bin/tsc`
+  }
   const tsConfigFile = path.join(opts.paths.src, 'jsx', 'tsconfig.json')
   try {
-    execSync(`${__dirname}/../../../node_modules/.bin/tsc --project ${tsConfigFile}`)
+    execSync(`${tscPath} --project ${tsConfigFile}`)
   } catch (err) {
     console.log(err.stdout.toString())
   }
@@ -351,8 +359,12 @@ function watchPublic(opts) {
 
 function typescriptWatchJs(opts) {
   console.log('-> typescriptWatchJs')
+  let tscPath = `${__dirname}/../../.bin/tsc`
+  if (!existsSync(tscPath)) {
+    tscPath = `${__dirname}/../node_modules/.bin/tsc`
+  }
   const tsConfigFile = path.join(opts.paths.src, 'js', 'tsconfig.json')
-  const jsTsc = spawn(`${__dirname}/../../../node_modules/.bin/tsc`, ['--watch', '--project', tsConfigFile], {
+  const jsTsc = spawn(tscPath, ['--watch', '--project', tsConfigFile], {
     env: process.env,
     stdio: 'inherit'
   })
@@ -363,8 +375,12 @@ function typescriptWatchJs(opts) {
 
 function typescriptWatchJsx(opts) {
   console.log('-> typescriptWatchJsx')
+  let tscPath = `${__dirname}/../../.bin/tsc`
+  if (!existsSync(tscPath)) {
+    tscPath = `${__dirname}/../node_modules/.bin/tsc`
+  }
   const tsConfigFile = path.join(opts.paths.src, 'jsx', 'tsconfig.json')
-  const jsxTsc = spawn(`${__dirname}/../../../node_modules/.bin/tsc`, ['--watch', '--project', tsConfigFile], {
+  const jsxTsc = spawn(tscPath, ['--watch', '--project', tsConfigFile], {
     env: process.env,
     stdio: 'inherit'
   })
