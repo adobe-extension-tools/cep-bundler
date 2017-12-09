@@ -150,7 +150,7 @@ function typescriptCompileJs(opts) {
   console.log('-> typescriptCompileJs')
   const tsConfigFile = path.join(opts.paths.src, 'js', 'tsconfig.json')
   try {
-    execSync(`${__dirname}/../node_modules/.bin/tsc --project ${tsConfigFile}`)
+    execSync(`${__dirname}/../../../node_modules/.bin/tsc --project ${tsConfigFile}`)
   } catch (err) {
     console.log(err.stdout.toString())
   }
@@ -160,7 +160,7 @@ function typescriptCompileJsx(opts) {
   console.log('-> typescriptCompileJsx')
   const tsConfigFile = path.join(opts.paths.src, 'jsx', 'tsconfig.json')
   try {
-    execSync(`${__dirname}/../node_modules/.bin/tsc --project ${tsConfigFile}`)
+    execSync(`${__dirname}/../../../node_modules/.bin/tsc --project ${tsConfigFile}`)
   } catch (err) {
     console.log(err.stdout.toString())
   }
@@ -352,7 +352,7 @@ function watchPublic(opts) {
 function typescriptWatchJs(opts) {
   console.log('-> typescriptWatchJs')
   const tsConfigFile = path.join(opts.paths.src, 'js', 'tsconfig.json')
-  const jsTsc = spawn(`${__dirname}/../node_modules/.bin/tsc`, ['--watch', '--project', tsConfigFile], {
+  const jsTsc = spawn(`${__dirname}/../../../node_modules/.bin/tsc`, ['--watch', '--project', tsConfigFile], {
     env: process.env,
     stdio: 'inherit'
   })
@@ -364,7 +364,7 @@ function typescriptWatchJs(opts) {
 function typescriptWatchJsx(opts) {
   console.log('-> typescriptWatchJsx')
   const tsConfigFile = path.join(opts.paths.src, 'jsx', 'tsconfig.json')
-  const jsxTsc = spawn(`${__dirname}/../node_modules/.bin/tsc`, ['--watch', '--project', tsConfigFile], {
+  const jsxTsc = spawn(`${__dirname}/../../../node_modules/.bin/tsc`, ['--watch', '--project', tsConfigFile], {
     env: process.env,
     stdio: 'inherit'
   })
