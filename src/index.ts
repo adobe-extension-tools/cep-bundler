@@ -103,7 +103,7 @@ function createManifest(opts) {
 
 function createHtml(opts) {
   console.log('-> createHtml')
-  writeFileSync(opts.paths.htmlFile, htmlTemplate(opts))
+  writeFileSync(opts.paths.htmlFile, opts.htmlTemplate ? opts.htmlTemplate(opts) : htmlTemplate(opts))
 }
 
 function createDebug(opts) {
