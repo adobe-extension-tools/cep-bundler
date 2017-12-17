@@ -79,7 +79,7 @@ function resolvePaths(opts) {
   opts.paths.manifestFile = opts.paths.manifestFile || path.join(opts.paths.manifestDir, 'manifest.xml')
   opts.paths.htmlFile = opts.paths.htmlFile || path.join(opts.paths.dest, 'index.html')
   opts.paths.debugFile = opts.paths.debugFile || path.join(opts.paths.dest, '.debug')
-  process.env.JSX_BUNDLE_PATH = path.join(opts.paths.build, 'jsx', 'index.js')
+  process.env.JSX_BUNDLE_PATH = path.join(opts.paths.dest, 'index.jsx')
 }
 
 function clean(opts) {
