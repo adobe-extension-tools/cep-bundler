@@ -10,8 +10,6 @@ import htmlTemplate from './templates/html'
 import debugTemplate from './templates/debug'
 import { execSync, spawn } from 'child_process'
 import * as browserify from 'browserify'
-import * as webpack from 'webpack'
-import * as webpackDevServer from 'webpack-dev-server'
 import * as budo from 'budo'
 import {
   copyAndReplace,
@@ -24,16 +22,13 @@ import {
 import * as syncFiles from 'sync-files'
 
 async function build(opts) {
-  if (!opts.bundler) {
-    opts.bundler = 'browserify'
-  }
   resolvePaths(opts)
   clean(opts)
   createHtml(opts)
   createManifest(opts)
   createDebug(opts)
-  typescriptCompileJs(opts)
   typescriptCompileJsx(opts)
+  typescriptCompileJs(opts)
   try {
     await copyAssets(opts)
     await copyPublic(opts)
@@ -41,30 +36,19 @@ async function build(opts) {
   } catch (err) {
     console.log('Error while copying', err)
   }
-  if (opts.bundler === 'browserify') {
-    browserifyBundleJs(opts)
-    browserifyBundleJsx(opts)
-  } else {
-    webpackBundleJs(opts)
-    webpackBundleJsx(opts)
-  }
+  await browserifyBundleJsx(opts)
+  browserifyBundleJs(opts)
 }
 
 async function watch(opts) {
-  opts.live = true
   try {
     await build(opts)
   } catch (err) {}
   symlink(opts)
   typescriptWatchJs(opts)
   typescriptWatchJsx(opts)
-  if (opts.bundler === 'browserify') {
-    browserifyWatchJsx(opts)
-    browserifyWatchJs(opts)
-  } else {
-    webpackWatchJs(opts)
-    webpackWatchJsx(opts)
-  }
+  browserifyWatchJsx(opts)
+  browserifyWatchJs(opts)
   watchPublic(opts)
   watchAssets(opts)
 }
@@ -107,10 +91,8 @@ function createHtml(opts) {
 }
 
 function createDebug(opts) {
-  // if (opts.live) {
   console.log('-> createDebug')
   writeFileSync(opts.paths.debugFile, debugTemplate(opts), 'utf8')
-  // }
 }
 
 function copyAssets(opts) {
@@ -174,118 +156,6 @@ function typescriptCompileJsx(opts) {
   }
 }
 
-function webpackBundleJs(opts, cb = () => {}) {
-  console.log('-> webpackBundleJs')
-  const entryFile = path.join(opts.paths.build, 'js', 'index.js')
-  const bundleFile = path.join(opts.paths.dest, 'index.js')
-  const compiler = webpack({
-    entry: entryFile,
-    output: {
-      path: path.dirname(bundleFile),
-      filename: path.basename(bundleFile)
-    }
-  })
-  compiler.run((err, stats) => {
-    if (err || stats.hasErrors()) {
-      console.log('Webpack error', err)
-    }
-  })
-}
-
-function webpackBundleJsx(opts, cb = () => {}) {
-  console.log('-> webpackBundleJsx')
-  const entryFile = path.join(opts.paths.build, 'jsx', 'index.js')
-  const bundleFile = path.join(opts.paths.dest, 'index.jsx')
-  const compiler = webpack({
-    entry: entryFile,
-    output: {
-      path: path.dirname(bundleFile),
-      filename: path.basename(bundleFile)
-    }
-  })
-  compiler.run((err, stats) => {
-    if (err || stats.hasErrors()) {
-      console.log('Webpack error', err)
-    }
-  })
-}
-
-function webpackWatchJs(opts, cb = () => {}) {
-  console.log('-> webpackWatchJs')
-  const entryFile = path.join(opts.paths.build, 'js', 'index.js')
-  const bundleFile = path.join(opts.paths.dest, 'index.js')
-  const compiler = webpack({
-    entry: {
-      app: [
-        `webpack-dev-server/client?http://localhost:${opts.devPort}/`,
-        entryFile
-      ]
-    },
-    module: {
-      rules: [
-        {
-          test: /\.scss$/,
-          use: [{
-            loader: 'style-loader'
-          }, {
-            loader: 'css-loader'
-          }, {
-            loader: 'sass-loader'
-          }]
-        },
-        {
-          test: /\.js$/,
-          exclude: /node_modules/,
-          use: "transform-loader?brfs"
-        },
-        {
-          test: /\.(png|woff|woff2|eot|ttf|svg)$/,
-          use: 'url-loader?limit=100000'
-        }
-      ]
-    },
-    output: {
-      path: path.dirname(bundleFile),
-      filename: path.basename(bundleFile)
-    }
-  })
-  compiler.watch({
-
-  }, (err, stats) => {
-    if (err || stats.hasErrors()) {
-      // Handle errors here
-      console.log('Webpack error', err)
-    }
-    // Done processing
-  })
-  var server = new webpackDevServer(compiler, {
-    hot: true,
-    inline: true,
-    contentBase: path.dirname(bundleFile)
-  })
-  server.listen(opts.devPort)
-}
-
-function webpackWatchJsx(opts, cb = () => {}) {
-  console.log('-> webpackWatchJsx')
-  const entryFile = path.join(opts.paths.build, 'jsx', 'index.js')
-  const bundleFile = path.join(opts.paths.dest, 'index.jsx')
-  const compiler = webpack({
-    entry: entryFile,
-    output: {
-      path: path.dirname(bundleFile),
-      filename: path.basename(bundleFile)
-    }
-  })
-  compiler.watch({
-
-  }, (err, stats) => {
-    if (err || stats.hasErrors()) {
-      console.log('Webpack error', err)
-    }
-  })
-}
-
 function browserifyBundleJs(opts, cb = () => {}) {
   console.log('-> browserifyBundleJs')
   const entryFile = path.join(opts.paths.build, 'js', 'index.js')
@@ -314,27 +184,29 @@ function browserifyBundleJs(opts, cb = () => {}) {
     .pipe(writeStream)
 }
 
-function browserifyBundleJsx(opts, cb = () => {}) {
+function browserifyBundleJsx(opts) {
   console.log('-> browserifyBundeJsx')
-  const entryFile = path.join(opts.paths.build, 'jsx', 'index.js')
-  const bundler = browserify({
-    entries: [entryFile],
-    cache: {},
-    packageCache: {},
-    plugin: [
-      [require('prependify'), `var globalThis = this;`]
-    ],
-    transform: [
-      require('envify'),
-      require('brfs')
-    ]
+  return new Promise(resolve => {
+    const entryFile = path.join(opts.paths.build, 'jsx', 'index.js')
+    const bundler = browserify({
+      entries: [entryFile],
+      cache: {},
+      packageCache: {},
+      plugin: [
+        [require('prependify'), `var globalThis = this;`]
+      ],
+      transform: [
+        require('envify'),
+        require('brfs')
+      ]
+    })
+    const bundleFile = path.join(opts.paths.dest, 'index.jsx')
+    const writeStream = createWriteStream(bundleFile)
+    writeStream.on('finish', resolve)
+    bundler.bundle()
+      .on('error', err => console.error(err.message))
+      .pipe(writeStream)
   })
-  const bundleFile = path.join(opts.paths.dest, 'index.jsx')
-  const writeStream = createWriteStream(bundleFile)
-  cb && writeStream.on('finish', cb)
-  bundler.bundle()
-    .on('error', err => console.error(err.message))
-    .pipe(writeStream)
 }
 
 function watchAssets(opts) {
@@ -408,7 +280,7 @@ function browserifyWatchJs(opts) {
       transform: transform,
       plugin: [
         [require('livereactload'), {
-          host: 'localhost'
+          host: opts.livereactloadHost || 'localhost'
         }]
       ]
     },
