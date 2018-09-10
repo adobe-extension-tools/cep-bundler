@@ -278,11 +278,13 @@ function browserifyWatchJs(opts) {
       debug: true,
       extensions: ['.js', '.jsx'],
       transform: transform,
-      plugin: [
-        [require('livereactload'), {
-          host: opts.livereactloadHost || 'localhost'
-        }]
-      ]
+      plugin: opts.live
+        ? [
+          [require('livereactload'), {
+            host: opts.livereactloadHost || 'localhost'
+          }]
+        ]
+        : []
     },
     live: false,
     port: opts.devPort,
