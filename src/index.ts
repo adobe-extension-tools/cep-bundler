@@ -27,8 +27,16 @@ async function build(opts) {
   createHtml(opts)
   createManifest(opts)
   createDebug(opts)
-  typescriptCompileJsx(opts)
-  typescriptCompileJs(opts)
+  if (opts.compilers.extendscript) {
+    opts.compilers.extendscript.forEach(src => {
+      typescriptCompileExtendScript(opts, src)
+    })
+  }
+  if (opts.compilers.cep) {
+    opts.compilers.cep.forEach(src => {
+      typescriptCompileCep(opts, src)
+    })
+  }
   try {
     await copyAssets(opts)
     await copyPublic(opts)
@@ -36,19 +44,41 @@ async function build(opts) {
   } catch (err) {
     console.log('Error while copying', err)
   }
-  await browserifyBundleJsx(opts)
-  browserifyBundleJs(opts)
+  if (opts.compilers.extendscript) {
+    await Promise.all(opts.compilers.extendscript.map(src => {
+      return browserifyBundleExtendScript(opts, src)
+    }))
+  }
+  if (opts.compilers.cep) {
+    opts.compilers.cep.forEach(src => {
+      browserifyBundleCep(opts, src)
+    })
+  }
 }
 
 async function watch(opts) {
-  try {
-    await build(opts)
-  } catch (err) {}
+  await build(opts)
   symlink(opts)
-  typescriptWatchJs(opts)
-  typescriptWatchJsx(opts)
-  browserifyWatchJsx(opts)
-  browserifyWatchJs(opts)
+  if (opts.compilers.extendscript) {
+    opts.compilers.extendscript.map(src => {
+      typescriptWatchExtendScript(opts, src)
+    })
+  }
+  if (opts.compilers.cep) {
+    opts.compilers.cep.forEach(src => {
+      typescriptWatchCep(opts, src)
+    })
+  }
+  if (opts.compilers.extendscript) {
+    await Promise.all(opts.compilers.extendscript.map(src => {
+      return browserifyWatchExtendScript(opts, src)
+    }))
+  }
+  if (opts.compilers.cep) {
+    opts.compilers.cep.forEach((src, i) => {
+      browserifyWatchCep(opts, src, i)
+    })
+  }
   watchPublic(opts)
   watchAssets(opts)
 }
@@ -56,14 +86,37 @@ async function watch(opts) {
 function resolvePaths(opts) {
   console.log('-> resolvePaths')
   opts.paths = opts.paths || {}
-  opts.paths.src = opts.paths.src || path.join(projectDir, opts.src)
-  opts.paths.build = opts.paths.build || path.join(projectDir, opts.build)
+  opts.paths.src = opts.paths.src || opts.src.substr(0, 1) === '/' ? opts.src : path.join(projectDir, opts.src)
+  opts.paths.assets = opts.paths.assets ||
+    opts.assets
+      ? (
+        opts.assets.substr(0, 1) === '/'
+          ? opts.assets
+          : path.join(opts.paths.src, opts.assets)
+      )
+      : path.join(opts.paths.src, 'js', 'assets')
+  opts.paths.build = opts.paths.build || opts.build.substr(0, 1) === '/' ? opts.build : path.join(projectDir, opts.build)
   opts.paths.dest = opts.paths.dest || opts.dest.substr(0, 1) === '/' ? opts.dest : path.join(projectDir, opts.dest)
+  opts.compilers = opts.compilers || {
+    cep: ['js'],
+    extendscript: ['jsx']
+  }
   opts.paths.manifestDir = opts.paths.manifestDir || path.join(opts.paths.dest, 'CSXS')
   opts.paths.manifestFile = opts.paths.manifestFile || path.join(opts.paths.manifestDir, 'manifest.xml')
   opts.paths.htmlFile = opts.paths.htmlFile || path.join(opts.paths.dest, 'index.html')
   opts.paths.debugFile = opts.paths.debugFile || path.join(opts.paths.dest, '.debug')
-  process.env.JSX_BUNDLE_PATH = path.join(opts.paths.dest, 'index.jsx')
+  if (opts.compilers.extendscript) {
+    opts.compilers.extendscript.forEach(src => {
+      const key = src.toUpperCase().replace(/\//g, '_') + '_BUNDLE_PATH'
+      process.env[key] = path.join(opts.paths.dest, src, 'index.js')
+    })
+  }
+  if (opts.compilers.cep) {
+    opts.compilers.cep.forEach(src => {
+      const key = src.toUpperCase().replace(/\//g, '_') + '_BUNDLE_PATH'
+      process.env[key] = path.join(opts.paths.dest, src, 'index.js')
+    })
+  }
 }
 
 function clean(opts) {
@@ -72,10 +125,13 @@ function clean(opts) {
     rmrf(opts.paths.dest)
   } catch (e) {}
   try {
+    rmrf(opts.paths.build)
+  } catch (e) {}
+  try {
     mkdirp(opts.paths.dest)
   } catch (e) {}
   try {
-    mkdirp(path.join(opts.paths.src, 'js', 'assets'))
+    mkdirp(opts.paths.assets)
   } catch (e) {}
 }
 
@@ -97,9 +153,9 @@ function createDebug(opts) {
 
 function copyAssets(opts) {
   console.log('-> copyAssets')
-  const assetsSrc = path.join(opts.paths.src, 'js', 'assets')
-  const assetsDest = path.join(opts.paths.build, 'js')
-  return cpr(assetsSrc, assetsDest)
+  const dest = path.join(opts.paths.build, opts.paths.assets.replace(opts.paths.src, ''))
+  mkdirp(dest)
+  return cpr(opts.paths.assets + '/', dest)
 }
 
 function copyPublic(opts) {
@@ -128,13 +184,26 @@ async function copyDeps(opts, pkg) {
   }
 }
 
-function typescriptCompileJs(opts) {
-  console.log('-> typescriptCompileJs')
-  let tscPath = `${__dirname}/../../.bin/tsc`
-  if (!existsSync(tscPath)) {
-    tscPath = `${__dirname}/../node_modules/.bin/tsc`
+function getTscPath(opts) {
+  const tscPaths = [
+    ...(opts.tscBin ? [opts.tscBin] : []),
+    `${projectDir}/node_modules/.bin/tsc`,
+    `${__dirname}/../../.bin/tsc`,
+    `${__dirname}/../node_modules/.bin/tsc`
+  ]
+  let tscPath = null
+  while (tscPath = tscPaths.shift()) {
+    if (existsSync(tscPath)) {
+      break
+    }
   }
-  const tsConfigFile = path.join(opts.paths.src, 'js', 'tsconfig.json')
+  return tscPath
+}
+
+function typescriptCompileCep(opts, src) {
+  console.log(`-> typescriptCompileCep (${src})`)
+  const tscPath = getTscPath(opts)
+  const tsConfigFile = path.join(opts.paths.src, src, 'tsconfig.json')
   try {
     execSync(`${tscPath} --project ${tsConfigFile}`)
   } catch (err) {
@@ -142,13 +211,10 @@ function typescriptCompileJs(opts) {
   }
 }
 
-function typescriptCompileJsx(opts) {
-  console.log('-> typescriptCompileJsx')
-  let tscPath = `${__dirname}/../../.bin/tsc`
-  if (!existsSync(tscPath)) {
-    tscPath = `${__dirname}/../node_modules/.bin/tsc`
-  }
-  const tsConfigFile = path.join(opts.paths.src, 'jsx', 'tsconfig.json')
+function typescriptCompileExtendScript(opts, src) {
+  console.log(`-> typescriptCompileExtendScript (${src})`)
+  const tscPath = getTscPath(opts)
+  const tsConfigFile = path.join(opts.paths.src, src, 'tsconfig.json')
   try {
     execSync(`${tscPath} --project ${tsConfigFile}`)
   } catch (err) {
@@ -156,51 +222,54 @@ function typescriptCompileJsx(opts) {
   }
 }
 
-function browserifyBundleJs(opts, cb = () => {}) {
-  console.log('-> browserifyBundleJs')
-  const entryFile = path.join(opts.paths.build, 'js', 'index.js')
-  let transform = []
-  if (opts.browserify && opts.browserify.js && opts.browserify.js.transform) {
-    transform = transform.concat(opts.browserify.js.transform)
-  }
-  transform = transform.concat([
+function browserifyBundleCep(opts, src) {
+  console.log('-> browserifyBundleCep')
+  const entryFile = path.join(opts.paths.build, src, 'index.js')
+  const transform = [
     require('babelify'),
     require('envify'),
-    require('brfs')
-  ])
+    require('brfs'),
+    ...(opts.browserify && opts.browserify[src] && opts.browserify[src].transform ? opts.browserify[src].transform : [])
+  ]
+  const plugin = (opts.browserify && opts.browserify[src] && opts.browserify[src].plugin ? opts.browserify[src].plugin : [])
   const bundler = browserify({
     entries: [entryFile],
     cache: {},
     packageCache: {},
     extensions: ['.js', '.jsx'],
-    transform: transform,
-    plugin: []
+    transform,
+    plugin
   })
-  const bundleFile = path.join(opts.paths.dest, 'index.js')
+  mkdirp(path.join(opts.paths.dest, src))
+  const bundleFile = path.join(opts.paths.dest, src, 'index.js')
   const writeStream = createWriteStream(bundleFile)
-  cb && writeStream.on('finish', cb)
   bundler.bundle()
     .on('error', err => console.error(err.message))
     .pipe(writeStream)
 }
 
-function browserifyBundleJsx(opts) {
-  console.log('-> browserifyBundeJsx')
+function browserifyBundleExtendScript(opts, src) {
+  console.log('-> browserifyBundleExtendScript')
   return new Promise(resolve => {
-    const entryFile = path.join(opts.paths.build, 'jsx', 'index.js')
+    const entryFile = path.join(opts.paths.build, src, 'index.js')
+    const transform = [
+      require('envify'),
+      require('brfs'),
+      ...(opts.browserify && opts.browserify[src] && opts.browserify[src].transform ? opts.browserify[src].transform : [])
+    ]
+    const plugin = [
+      [require('prependify'), `var globalThis = this;`],
+      ...(opts.browserify && opts.browserify[src] && opts.browserify[src].plugin ? opts.browserify[src].plugin : [])
+    ]
     const bundler = browserify({
       entries: [entryFile],
       cache: {},
       packageCache: {},
-      plugin: [
-        [require('prependify'), `var globalThis = this;`]
-      ],
-      transform: [
-        require('envify'),
-        require('brfs')
-      ]
+      plugin,
+      transform
     })
-    const bundleFile = path.join(opts.paths.dest, 'index.jsx')
+    mkdirp(path.join(opts.paths.dest, src))
+    const bundleFile = path.join(opts.paths.dest, src, 'index.js')
     const writeStream = createWriteStream(bundleFile)
     writeStream.on('finish', resolve)
     bundler.bundle()
@@ -211,9 +280,8 @@ function browserifyBundleJsx(opts) {
 
 function watchAssets(opts) {
   console.log('-> watchAssets')
-  const assetsSrc = path.join(opts.paths.src, 'js', 'assets')
-  const assetsDest = path.join(opts.paths.build, 'js')
-  return syncFiles(assetsSrc, assetsDest, {
+  const dest = path.join(opts.paths.build, opts.paths.assets.replace(opts.paths.src, ''))
+  return syncFiles(opts.paths.assets, dest, {
     watch: true,
     delete: false
   }, () => {})
@@ -229,13 +297,10 @@ function watchPublic(opts) {
   }, () => {})
 }
 
-function typescriptWatchJs(opts) {
-  console.log('-> typescriptWatchJs')
-  let tscPath = `${__dirname}/../../.bin/tsc`
-  if (!existsSync(tscPath)) {
-    tscPath = `${__dirname}/../node_modules/.bin/tsc`
-  }
-  const tsConfigFile = path.join(opts.paths.src, 'js', 'tsconfig.json')
+function typescriptWatchCep(opts, src) {
+  console.log('-> typescriptWatchCep')
+  const tscPath = getTscPath(opts)
+  const tsConfigFile = path.join(opts.paths.src, src, 'tsconfig.json')
   const jsTsc = spawn(tscPath, ['--watch', '--project', tsConfigFile], {
     env: process.env,
     stdio: 'inherit'
@@ -245,13 +310,10 @@ function typescriptWatchJs(opts) {
   })
 }
 
-function typescriptWatchJsx(opts) {
-  console.log('-> typescriptWatchJsx')
-  let tscPath = `${__dirname}/../../.bin/tsc`
-  if (!existsSync(tscPath)) {
-    tscPath = `${__dirname}/../node_modules/.bin/tsc`
-  }
-  const tsConfigFile = path.join(opts.paths.src, 'jsx', 'tsconfig.json')
+function typescriptWatchExtendScript(opts, src) {
+  console.log('-> typescriptWatchExtendScript')
+  const tscPath = getTscPath(opts)
+  const tsConfigFile = path.join(opts.paths.src, src, 'tsconfig.json')
   const jsxTsc = spawn(tscPath, ['--watch', '--project', tsConfigFile], {
     env: process.env,
     stdio: 'inherit'
@@ -261,33 +323,28 @@ function typescriptWatchJsx(opts) {
   })
 }
 
-function browserifyWatchJs(opts) {
-  console.log('-> browserifyWatchJs')
-  const entryFile = path.join(opts.paths.build, 'js', 'index.js')
-  let transform = []
-  if (opts.browserify && opts.browserify.js && opts.browserify.js.transform) {
-    transform = transform.concat(opts.browserify.js.transform)
-  }
-  transform = transform.concat([
+function browserifyWatchCep(opts, src, i) {
+  console.log('-> browserifyWatchCep')
+  const entryFile = path.join(opts.paths.build, src, 'index.js')
+  const transform = [
     require('babelify'),
     require('envify'),
-    require('brfs')
-  ])
+    require('brfs'),
+    ...(opts.browserify && opts.browserify[src] && opts.browserify[src].transform ? opts.browserify[src].transform : [])
+  ]
+  const plugin = [
+    ...(opts.live ? [[require('livereactload'), { host: opts.livereactloadHost || 'localhost' }]] : []),
+    ...(opts.browserify && opts.browserify[src] && opts.browserify[src].plugin) ? opts.browserify[src].plugin : []
+  ]
   budo(entryFile, {
     browserify: {
       debug: true,
       extensions: ['.js', '.jsx'],
-      transform: transform,
-      plugin: opts.live
-        ? [
-          [require('livereactload'), {
-            host: opts.livereactloadHost || 'localhost'
-          }]
-        ]
-        : []
+      transform,
+      plugin
     },
     live: false,
-    port: opts.devPort,
+    port: opts.devPort + i,
     portfind: false,
     host: '0.0.0.0',
     dir: opts.paths.dest,
@@ -295,32 +352,42 @@ function browserifyWatchJs(opts) {
   })
 }
 
-function browserifyWatchJsx(opts) {
-  console.log('-> browserifyWatchJsx')
-  const entryFile = path.join(opts.paths.build, 'jsx', 'index.js')
-  const bundler = browserify({
-    entries: [entryFile],
-    cache: {},
-    packageCache: {},
-    plugin: [
-      require('watchify'),
-      [require('prependify'), `var globalThis = this;`]
-    ],
-    transform: [
+function browserifyWatchExtendScript(opts, src) {
+  console.log('-> browserifyWatchExtendScript')
+  return new Promise(resolve => {
+    const entryFile = path.join(opts.paths.build, src, 'index.js')
+    const transform = [
       require('envify'),
-      require('brfs')
+      require('brfs'),
+      ...(opts.browserify && opts.browserify[src] && opts.browserify[src].transform ? opts.browserify[src].transform : [])
     ]
+    const plugin = [
+      require('watchify'),
+      [require('prependify'), `var globalThis = this;`],
+      ...(opts.browserify && opts.browserify[src] && opts.browserify[src].plugin ? opts.browserify[src].plugin : [])
+    ]
+    const bundler = browserify({
+      entries: [entryFile],
+      cache: {},
+      packageCache: {},
+      plugin,
+      transform
+    })
+    mkdirp(path.join(opts.paths.dest, src))
+    function updateJsx() {
+      console.log('-> updateJsx')
+      const bundleFile = path.join(opts.paths.dest, src, 'index.js')
+      const writeStream = createWriteStream(bundleFile)
+      if (arguments.length > 0) {
+        writeStream.on('finish', resolve)
+      }
+      bundler.bundle()
+        .on('error', err => console.error(err.message))
+        .pipe(writeStream)
+    }
+    bundler.on('update', updateJsx)
+    updateJsx()
   })
-  function updateJsx() {
-    console.log('-> updateJsx')
-    const bundleFile = path.join(opts.paths.dest, 'index.jsx')
-    const writeStream = createWriteStream(bundleFile)
-    bundler.bundle()
-      .on('error', err => console.error(err.message))
-      .pipe(writeStream)
-  }
-  bundler.on('update', updateJsx)
-  updateJsx()
 }
 
 function symlink(opts) {

@@ -27,6 +27,7 @@ export default (opts) => `<html>
       console.log(err)
     }
     </script>
-    <script src="${opts.live ? `http://localhost:${opts.devPort}/index.js` : './index.js'}"></script>
+    ${opts.compilers && opts.compilers.cep ? opts.compilers.cep.map((src, i) =>
+      `<script src="${opts.live ? `http://localhost:${opts.devPort + i}/index.js` : `./${src}/index.js`}"></script>`) : ''}
   </body>
 </html>`
