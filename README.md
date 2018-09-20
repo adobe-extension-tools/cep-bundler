@@ -36,7 +36,8 @@ Or, add to your `package.json`'s scripts section:
 
 ```json
 "scripts": {
-  "build": "cep-bundler"
+  "start": "cep-bundler",
+  "build": "cep-bundler build"
 }
 ```
 
